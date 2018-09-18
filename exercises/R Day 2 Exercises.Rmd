@@ -1,0 +1,173 @@
+---
+title: "R Day 2"
+author: "Naomi Kaduwela"
+date: "9/18/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+here::here("data", "gapminder5.csv")
+gapminder <- read.csv(here::here("data", "gapminder5.csv"))
+str(gapminder)
+```
+
+## Converting Factors to Characters 
+
+```{r}
+gapminder$country <- as.character(gapminder$country)
+gapminder$continent <- as.character(gapminder$continent)
+str(gapminder)
+```
+
+## LOOPS: Create log variables with a FOR loop with GDP per capita and population called log_gdpPercap and log_pop
+```{r}
+obs <- 1:nrow(gapminder)
+```
+## Initialize for loop with for(i in vector)
+```{r}
+for(i in obs){
+  gapminder[i,"log_gdpPercap"] <- log(gapminder[i,"gdpPercap"])
+  gapminder[i, "log_pop"] <- log(gapminder[i,"pop"])
+}
+```
+#Life expectancy increased over time? (mean by year)
+```{r}
+years <-unique(gapminder$year)
+
+for(i in years){
+  mean_le <- mean(gapminder$lifeExp[gapminder$year==i], na.rm=T)
+  print(paste0(i, ": ", mean_le))
+}
+```
+
+#Life expectancy increased over time? (mean by continent)
+```{r}
+
+continent <-unique(gapminder$continent)
+for(i in continent){
+  mean_le <- mean(gapminder$lifeExp[gapminder$continent==i], na.rm=T)
+  print(paste0(i, ": ", mean_le))
+}
+
+```
+
+## Nested FOR loops
+
+```{r}
+for (i in continent){
+  print(paste0("Continent: ", i))
+  for(j in years){
+    std_le <- sd(gapminder$lifeExp[gapminder$continent == i & gapminder$year ==j], na.rm =T)
+  print(paste0(j, ": ", std_le))
+  }
+}
+```
+
+# Apply - takes a matrix, instead of data frame 
+```{r}
+vars <- gapminder[, c("lifeExp", "pop", "gdpPercap")]
+apply(vars, 2, mean)
+```
+
+## WHILE LOOP
+```{r}
+i <-1987
+while (i<=2002){
+  sd_le <- sd(gapminder$lifExp[gapminder$year ==i])
+  print(paste0(i,": ", sd_le))
+  i<- i+5
+}
+```
+
+# IF
+```{r}
+set.seed(1)
+random_year <- sample(years, 1)
+if(random_year > 1997){
+  print(random_year)
+}else{
+  print("sorry")
+}
+```
+#FOR LOOP WITH IF ELSE - report mean population for years greater than or = 1987, print conditions not met as well
+```{r}
+threshold <- 1987
+for(i in unique(gapminder$year)){
+  tmp <- mean(gapminder$lifeExp[gapminder$year==i])
+  
+  if(tmp<threshold){
+    print(paste("the year is < 1987 threshold"))
+  } else{
+    print(paste0("mean pop: ", tmp))
+  }
+}
+```
+
+## Writing Functions
+```{r}
+get_values <-
+  function(df, variable = "continent"){
+    vals <- unique(df[[variable]])
+    print(paste0(variable, ": ", vals))
+  }
+```
+
+## More coplex function
+
+```{r}
+report_mean_sd <-
+  function(df, variable, country){
+    var <- gapminder[[variable]][gapminder$country == country]
+    m_le <- mean(var)
+    sd_le <- sd(var)
+    cat("Country", country, "\n Mean Life Expectancy: ", m_le, "\nSD Life Expectancy", sd_le)
+  }
+
+report_mean_sd(gapminder, "lifeExp", "Blugaria")
+```
+## create own function: reports mean, mediam, min, max for le for a continent in gapminder
+```{r}
+report_stats <-
+  function(df, variable, continent){
+    var <- gapminder[[variable]][gapminder$continent == continent]
+    m_le <- mean(var)
+    med_le <- median(var)
+    min_le <- min(var)
+    max_le <- max(var)
+    cat("Continent", continent, 
+        "\n Mean Life Expectancy: ", m_le, 
+        "\n Median Life Expectancy", med_le,
+        "\n Min Life Expectancy", min_le,
+        "\n Max Life Expectancy", max_le
+        )
+  }
+
+report_stats(gapminder, "lifeExp", "Oceania")
+
+```
+
+#Function with FOR loop
+```{r}
+viz_lm <-
+  function(df, dv, iv, year){
+    dat <- df[df[["year"]]==year,]
+    y <- log(dat[[dv]])
+    x <- log(dat[[iv]])
+    fit <- lm(y-x)
+    plot(y-x, main = year, 
+         xlab = iv, ylab = dv)
+    lines(x, predict(fit), col='blue')
+  }
+
+```
+
+```{r}
+for(i in years){
+  viz_lm(gapminder, "lifeExp", "gdpPercap", i)
+}
+```
+
