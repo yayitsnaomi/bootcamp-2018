@@ -1,0 +1,203 @@
+---
+title: "R Day 3"
+author: "Naomi Kaduwela"
+date: "9/19/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Read a new dataset :: California Energy Data
+```{r}
+generation <- read.csv(here::here("data/generation.csv"),
+                        stringsAsFactors = F)
+imports <- read.csv(here::here("data/imports.csv"),
+                        stringsAsFactors = F)
+```
+#Look at data
+```{r}
+str(generation)
+str(imports)
+```
+#Fix date time formats
+```{r}
+library(lubridate)
+generation$datetime <-as_datetime(generation$datetime)
+class(generation$datetime)
+head(generation$datetime)
+
+imports$datetime <-as_datetime(imports$datetime)
+class(imports$datetime)
+head(imports$datetime)
+```
+#Wide vs long data :: need to make Generation data long by melting it on the date time variable so it abides by Tidy data standards
+```{r}
+head(generation)
+library(reshape2)
+long_gen <- melt(generation, id.vars = "datetime",
+                 variable.name ="source",
+                 value.name ="usage")
+head(long_gen)
+long_gen[order(long_gen$datetime)[1:20],]
+```
+#Merge Data on date time using original generation df and imports df
+```{r}
+merged_energy <- merge(generation, imports, by ="datetime")
+dim(merged_energy)
+head(merged_energy)
+```
+#Melt Merged Data
+```{r}
+long_merged_energy <- melt(merged_energy, id.vars = "datetime",
+                 variable.name ="source",
+                 value.name ="usage")
+head(long_merged_energy)
+```
+
+#Playing with dplyr to select subsets of the merged data frame:
+```{r}
+library(dplyr)
+tmp <- select(merged_energy, biogas, biomass, geothermal, solar)
+names(tmp)
+
+tmp <- select(merged_energy, contains("hydro"), starts_with("bio"))
+names(tmp)
+
+```
+#Filter data with multiple conditions
+```{r}
+tmp <- filter(merged_energy, imports > 7000, natural_gas<7000)
+nrow(tmp)
+```
+#Look at data again
+```{r}
+head(tmp)
+```
+#Mutate Data, to create new variables : Natural Log of usage, usage squared, usage to the third power
+```{r}
+tmp <- mutate(long_merged_energy, log_usage = log(usage), usage2 = usage^2, usage3 = usage^3)
+head(tmp)
+```
+#Summarize data to a single value based on sum function : Total energy consumption
+```{r}
+summarize(long_merged_energy, total=sum(usage, na.rm=T))
+```
+#Summarize data to a single value based on mean function : mean energy consumption
+```{r}
+summarize(long_merged_energy, mean_cons=mean(usage, na.rm=T))
+```
+#Chaining functions with Pipe %>% "then" - creates an implicit data frame that takes next each operation. 
+```{r}
+long_merged_energy %>%
+  filter(source == "geothermal") %>%
+  select(-datetime) %>%
+  mutate(log_usage = log(usage)) %>%
+  summarize(mean_log_usage = mean(log_usage, na.rm=T))
+```
+
+#Summing with Pipe, can store to another variable 
+```{r}
+tmp <-
+mereged_energy %>%
+  select(-datetime) %>%
+  mutate(total_usage = rowSums(.,na.rm=T)) %>%
+  summarize(tota_usage = sum(tota_usage, na.rm=T))
+
+```
+#View merged_energy
+```{r}
+View(merged_energy)
+```
+
+
+#Piping: Select variables with hydro, create new var total_hydro which is the sum of all retained hydro vars 3. mean usage for total hydro 
+```{r}
+merged_energy %>%
+  select(contains("hydro")) %>%
+  mutate(total_hydro = rowSums(.,na.rm=T)) %>%
+  summarize(mean_usage = mean(total_hydro, na.rm=T))
+```
+#Perform operations with Group by and summarize
+```{r}
+long_merged_energy %>%
+  group_by(source) %>%
+  summarize(sum_usage = sum(usage, na.rm=T))
+```
+#Perform operations with Group by and summarize
+```{r}
+gapminder <- read.csv(here::here("data/gapminder5.csv"))
+
+gapminder %>%
+  group_by(year) %>%
+  summarize(mean_le = mean(lifeExp, na.rm=T),
+            sd_lf = sd(lifeExp, na.rm=T))
+```
+#Mean by hour for small hydro, large hyrdo, biogas, and biomass - start with wide data set, melt, try to do with pipe
+
+```{r}
+merged_energy %>%
+  select(datetime, contains("hyrdo"), contains("bio")) %>%
+  melt(id.vars = "datetime", 
+       variable.name = "source",
+       value.name = "usage") %>%
+  group_by(source) %>%
+  summarize(mean_usage = mean(usage, na.rm=T))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
